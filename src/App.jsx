@@ -1,41 +1,52 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import "./style.css";
 import axios from "axios";
+import isUrl from "is-url";
+import { useNavigate } from "react-router-dom";
 
-function sanitizeUrl(raw) {
-  if (!raw) return "";
-
-  let s = raw.trim();
-  s = s.replace(/\s+/g, "");
-
-  if (!/^https?:\/\//i.test(s)) {
-    s = "https://" + s;
-  }
-
-  return s;
+function sanitizeUrl(value) {
+  if (!value) return "";
+  return value.trim();
 }
 
 function isValidHttpUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
+  return isUrl(value);
 }
 
 export default function App() {
+  const navigate = useNavigate();
+
   const [input, setInput] = useState("");
   const [result, setResult] = useState(null);
   const [apiError, setApiError] = useState("");
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+
+  const isLoggedIn = !!token;
+
+  useEffect(() => {
+    function syncToken() {
+      setToken(localStorage.getItem("token"));
+    }
+
+    window.addEventListener("storage", syncToken);
+    return () => window.removeEventListener("storage", syncToken);
+  }, []);
 
   const sanitized = useMemo(() => sanitizeUrl(input), [input]);
   const valid = sanitized.length === 0 ? true : isValidHttpUrl(sanitized);
 
   const error =
     sanitized.length > 0 && !valid
-      ? "Please enter a valid http(s) URL (example: https://google.com)"
+      ? "Please enter a valid http(s) URL (example: https://www.google.com)"
       : "";
+
+  function handleLogout() {
+    localStorage.removeItem("token");
+    setToken(null);
+    setApiError("");
+    setResult(null);
+    navigate("/login");
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -49,9 +60,9 @@ export default function App() {
         "http://localhost:8080/shorten",
         { urlAddress: sanitized },
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+          headers: isLoggedIn
+            ? { Authorization: `Bearer ${token}` }
+            : undefined,
         }
       );
 
@@ -61,7 +72,11 @@ export default function App() {
         code: res.data.code,
       });
     } catch (err) {
-      setApiError("Something went wrong. Please try again.");
+      if (err?.response?.status === 401) {
+        setApiError("You need to log in to shorten URLs.");
+      } else {
+        setApiError("Something went wrong. Please try again.");
+      }
       console.error(err);
     }
   }
@@ -69,6 +84,38 @@ export default function App() {
   return (
     <div className="page">
       <div className="card">
+        <div className="card-top">
+          <div className="auth-buttons">
+            {!isLoggedIn ? (
+              <>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => navigate("/login")}
+                >
+                  Login
+                </button>
+
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => navigate("/register")}
+                >
+                  Register
+                </button>
+              </>
+            ) : (
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="header">
           <h1>Shorten your link</h1>
           <p>Paste any URL and get a clean short link in seconds.</p>
@@ -96,12 +143,6 @@ export default function App() {
 
           {error && <p className="error">{error}</p>}
           {apiError && <p className="error">{apiError}</p>}
-
-          {sanitized && valid && (
-            <p className="hint">
-              Sanitized: <span>{sanitized}</span>
-            </p>
-          )}
         </form>
 
         {result && (

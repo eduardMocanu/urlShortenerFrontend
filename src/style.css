@@ -18,6 +18,7 @@ body {
   color: var(--text);
 }
 
+/* PAGE */
 .page {
   min-height: 100vh;
   background: linear-gradient(135deg, var(--bg1), var(--bg2));
@@ -26,6 +27,7 @@ body {
   padding: 24px;
 }
 
+/* CARD */
 .card {
   width: 100%;
   max-width: 720px;
@@ -36,6 +38,18 @@ body {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
+/* AUTH BUTTONS (TOP RIGHT OF SCREEN) */
+.auth-buttons {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* HEADER */
 .header h1 {
   font-size: 34px;
   margin: 0;
@@ -48,6 +62,7 @@ body {
   opacity: 0.8;
 }
 
+/* FORM */
 .label {
   display: block;
   margin-top: 18px;
@@ -79,6 +94,7 @@ body {
   border-color: var(--danger);
 }
 
+/* BUTTONS */
 .btn {
   padding: 14px 18px;
   border-radius: 14px;
@@ -95,22 +111,26 @@ body {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ERRORS */
 .error {
   margin-top: 10px;
   color: #ff8a8a;
   font-size: 14px;
 }
 
-.hint {
-  margin-top: 10px;
-  opacity: 0.75;
-  font-size: 14px;
-}
-
-.hint span {
-  opacity: 1;
-}
-
+/* RESULT */
 .result {
   margin-top: 22px;
   padding: 16px;
