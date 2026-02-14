@@ -32,14 +32,6 @@ export default function App() {
     return () => window.removeEventListener("storage", syncToken);
   }, []);
 
-  const sanitized = useMemo(() => sanitizeUrl(input), [input]);
-  const valid = sanitized.length === 0 ? true : isValidHttpUrl(sanitized);
-
-  const error =
-    sanitized.length > 0 && !valid
-      ? "Please enter a valid http(s) URL (example: https://www.google.com)"
-      : "";
-
   function handleLogout() {
     localStorage.removeItem("token");
     setToken(null);
@@ -47,6 +39,14 @@ export default function App() {
     setResult(null);
     navigate("/login");
   }
+
+  const sanitized = useMemo(() => sanitizeUrl(input), [input]);
+  const valid = sanitized.length === 0 ? true : isValidHttpUrl(sanitized);
+
+  const error =
+    sanitized.length > 0 && !valid
+      ? "Please enter a valid http(s) URL (example: https://www.google.com)"
+      : "";
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -83,39 +83,47 @@ export default function App() {
 
   return (
     <div className="page">
+      <div className="auth-buttons">
+        {!isLoggedIn ? (
+          <>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => navigate("/login")}
+            >
+              Login
+            </button>
+
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => navigate("/register")}
+            >
+              Register
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => navigate("/account")}
+            >
+              Account
+            </button>
+
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </>
+        )}
+      </div>
+
       <div className="card">
-        <div className="card-top">
-          <div className="auth-buttons">
-            {!isLoggedIn ? (
-              <>
-                <button
-                  className="btn btn-secondary"
-                  type="button"
-                  onClick={() => navigate("/login")}
-                >
-                  Login
-                </button>
-
-                <button
-                  className="btn btn-secondary"
-                  type="button"
-                  onClick={() => navigate("/register")}
-                >
-                  Register
-                </button>
-              </>
-            ) : (
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-            )}
-          </div>
-        </div>
-
         <div className="header">
           <h1>Shorten your link</h1>
           <p>Paste any URL and get a clean short link in seconds.</p>
