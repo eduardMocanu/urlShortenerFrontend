@@ -33,7 +33,7 @@ export default function Account() {
 
   function handleLogout() {
     localStorage.removeItem("token");
-    navigate("/login");
+    navigate("/login", { replace: true });
   }
 
   async function copyToClipboard(text, id) {
@@ -48,6 +48,12 @@ export default function Account() {
   }
 
   useEffect(() => {
+    // If not logged in, redirect immediately
+    if (!token) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
     async function loadUrls() {
       setLoading(true);
       setApiError("");
@@ -61,25 +67,22 @@ export default function Account() {
 
         setUrls(res.data || []);
       } catch (err) {
+        // If token is invalid/expired, redirect to login
         if (err?.response?.status === 401) {
-          setApiError("You are not logged in.");
-        } else {
-          setApiError("Could not load your URLs. Try again.");
+          localStorage.removeItem("token");
+          navigate("/login", { replace: true });
+          return;
         }
+
+        setApiError("Could not load your URLs. Try again.");
         console.error(err);
       } finally {
         setLoading(false);
       }
     }
 
-    if (!token) {
-      setApiError("You are not logged in.");
-      setLoading(false);
-      return;
-    }
-
     loadUrls();
-  }, [token, BACKEND_URL]);
+  }, [token, BACKEND_URL, navigate]);
 
   const sortedUrls = useMemo(() => {
     return [...urls].sort((a, b) => {
