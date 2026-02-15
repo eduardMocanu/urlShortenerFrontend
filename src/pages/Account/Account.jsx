@@ -10,7 +10,7 @@ function formatDate(value) {
   return d.toLocaleString();
 }
 
-function isExpired(expiration) {
+function isTimeExpired(expiration) {
   if (!expiration) return false;
   return new Date(expiration).getTime() < Date.now();
 }
@@ -27,9 +27,15 @@ export default function Account() {
   const [urls, setUrls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
+
   const [copiedId, setCopiedId] = useState(null);
+  const [invalidatingId, setInvalidatingId] = useState(null);
 
   const token = localStorage.getItem("token");
+
+  function authHeaders() {
+    return { Authorization: `Bearer ${token}` };
+  }
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -47,41 +53,81 @@ export default function Account() {
     }
   }
 
+  async function loadUrls() {
+    setLoading(true);
+    setApiError("");
+
+    try {
+      const res = await axios.get(`${BACKEND_URL}account`, {
+        headers: authHeaders(),
+      });
+
+      setUrls(res.data || []);
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      console.error(err);
+      setApiError("Could not load your URLs. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function invalidateUrl(id) {
+    setInvalidatingId(id);
+    setApiError("");
+
+    try {
+      await axios.put(
+        `${BACKEND_URL}invalidate/${id}`,
+        {},
+        { headers: authHeaders() }
+      );
+
+      // Update only that row (no refresh, no scroll jump)
+      setUrls((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                active: false,
+                // backend sets expiration = now when invalidated
+                expiration: new Date().toISOString(),
+              }
+            : u
+        )
+      );
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      console.error("Invalidate failed:", err);
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Could not invalidate the URL.";
+
+      setApiError(typeof msg === "string" ? msg : "Could not invalidate the URL.");
+    } finally {
+      setInvalidatingId(null);
+    }
+  }
+
   useEffect(() => {
-    // If not logged in, redirect immediately
     if (!token) {
       navigate("/login", { replace: true });
       return;
     }
-
-    async function loadUrls() {
-      setLoading(true);
-      setApiError("");
-
-      try {
-        const res = await axios.get(`${BACKEND_URL}account`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        setUrls(res.data || []);
-      } catch (err) {
-        // If token is invalid/expired, redirect to login
-        if (err?.response?.status === 401) {
-          localStorage.removeItem("token");
-          navigate("/login", { replace: true });
-          return;
-        }
-
-        setApiError("Could not load your URLs. Try again.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadUrls();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, BACKEND_URL, navigate]);
 
   const sortedUrls = useMemo(() => {
@@ -97,7 +143,7 @@ export default function Account() {
     const totalClicks = urls.reduce((sum, u) => sum + (u.clicksCount ?? 0), 0);
 
     const expiredCount = urls.filter(
-      (u) => u.active === false || isExpired(u.expiration)
+      (u) => u.active === false || isTimeExpired(u.expiration)
     ).length;
 
     const activeCount = totalLinks - expiredCount;
@@ -172,11 +218,20 @@ export default function Account() {
         {!loading && !apiError && sortedUrls.length > 0 && (
           <div className="links-list">
             {sortedUrls.map((u) => {
-              const expired = isExpired(u.expiration);
-              const status = expired || u.active === false ? "Expired" : "Active";
+              const expiredByTime = isTimeExpired(u.expiration);
+              const expiredByInactive = u.active === false;
+
+              const status =
+                expiredByTime || expiredByInactive ? "Expired" : "Active";
 
               const shortLink = `${BACKEND_URL}r/${u.shortUrl}`;
               const displayShort = `r/${u.shortUrl}`;
+
+              const expiresLabel = status === "Active" ? "Expires" : "Expired";
+              const expiresValue = formatDate(u.expiration);
+
+              const disableInvalidate =
+                u.active === false || invalidatingId === u.id;
 
               return (
                 <div className="link-row" key={u.id}>
@@ -198,6 +253,17 @@ export default function Account() {
                         onClick={() => copyToClipboard(shortLink, u.id)}
                       >
                         {copiedId === u.id ? "Copied!" : "Copy"}
+                      </button>
+
+                      <button
+                        className="invalidate-btn"
+                        type="button"
+                        disabled={disableInvalidate}
+                        onClick={() => invalidateUrl(u.id)}
+                      >
+                        {invalidatingId === u.id
+                          ? "Invalidating..."
+                          : "Invalidate"}
                       </button>
 
                       <span
@@ -232,8 +298,8 @@ export default function Account() {
                     </div>
 
                     <div className="meta">
-                      <div className="meta-label">Expires</div>
-                      <div className="meta-value">{formatDate(u.expiration)}</div>
+                      <div className="meta-label">{expiresLabel}</div>
+                      <div className="meta-value">{expiresValue}</div>
                     </div>
 
                     <div className="meta">

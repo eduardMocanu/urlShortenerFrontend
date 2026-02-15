@@ -235,6 +235,28 @@ body {
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* INVALIDATE BUTTON */
+.invalidate-btn {
+  border: 1px solid rgba(255, 80, 80, 0.35);
+  background: rgba(255, 80, 80, 0.12);
+  color: white;
+  border-radius: 12px;
+  padding: 7px 10px;
+  font-weight: 900;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.invalidate-btn:hover {
+  background: rgba(255, 80, 80, 0.2);
+}
+
+.invalidate-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* PILLS */
 .pill {
   display: inline-block;
@@ -264,6 +286,20 @@ body {
   margin-top: 10px;
   opacity: 0.75;
   font-size: 14px;
+}
+
+/* DEBUG BOX */
+.debug-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* RESPONSIVE */
