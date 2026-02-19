@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./style.css";
 import { useNavigate } from "react-router-dom";
+import { getValidToken } from "../../utils/auth";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -31,7 +32,12 @@ export default function Account() {
   const [copiedId, setCopiedId] = useState(null);
   const [invalidatingId, setInvalidatingId] = useState(null);
 
-  const token = localStorage.getItem("token");
+  // filter + sorting
+  const [statusFilter, setStatusFilter] = useState("all"); // all | active | expired
+  const [clickSort, setClickSort] = useState("none"); // none | asc | desc
+
+  // IMPORTANT: valid token only
+  const token = getValidToken();
 
   function authHeaders() {
     return { Authorization: `Bearer ${token}` };
@@ -57,9 +63,17 @@ export default function Account() {
     setLoading(true);
     setApiError("");
 
+    const freshToken = getValidToken();
+
+    // token expired between renders
+    if (!freshToken) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
     try {
       const res = await axios.get(`${BACKEND_URL}account`, {
-        headers: authHeaders(),
+        headers: { Authorization: `Bearer ${freshToken}` },
       });
 
       setUrls(res.data || []);
@@ -81,21 +95,26 @@ export default function Account() {
     setInvalidatingId(id);
     setApiError("");
 
+    const freshToken = getValidToken();
+
+    if (!freshToken) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
     try {
       await axios.put(
         `${BACKEND_URL}invalidate/${id}`,
         {},
-        { headers: authHeaders() }
+        { headers: { Authorization: `Bearer ${freshToken}` } }
       );
 
-      // Update only that row (no refresh, no scroll jump)
       setUrls((prev) =>
         prev.map((u) =>
           u.id === id
             ? {
                 ...u,
                 active: false,
-                // backend sets expiration = now when invalidated
                 expiration: new Date().toISOString(),
               }
             : u
@@ -115,7 +134,9 @@ export default function Account() {
         err?.response?.data?.error ||
         "Could not invalidate the URL.";
 
-      setApiError(typeof msg === "string" ? msg : "Could not invalidate the URL.");
+      setApiError(
+        typeof msg === "string" ? msg : "Could not invalidate the URL."
+      );
     } finally {
       setInvalidatingId(null);
     }
@@ -126,17 +147,47 @@ export default function Account() {
       navigate("/login", { replace: true });
       return;
     }
+
     loadUrls();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, BACKEND_URL, navigate]);
 
-  const sortedUrls = useMemo(() => {
-    return [...urls].sort((a, b) => {
+  const visibleUrls = useMemo(() => {
+    const filtered = urls.filter((u) => {
+      const expired = u.active === false || isTimeExpired(u.expiration);
+
+      if (statusFilter === "active") return !expired;
+      if (statusFilter === "expired") return expired;
+      return true;
+    });
+
+    const copy = [...filtered];
+
+    // default sort: newest
+    copy.sort((a, b) => {
       const da = new Date(a.createdAt).getTime();
       const db = new Date(b.createdAt).getTime();
       return db - da;
     });
-  }, [urls]);
+
+    // click sort overrides
+    if (clickSort !== "none") {
+      copy.sort((a, b) => {
+        const ca = a.clicksCount ?? 0;
+        const cb = b.clicksCount ?? 0;
+
+        // tie-breaker: newest
+        const da = new Date(a.createdAt).getTime();
+        const db = new Date(b.createdAt).getTime();
+
+        if (ca === cb) return db - da;
+
+        return clickSort === "asc" ? ca - cb : cb - ca;
+      });
+    }
+
+    return copy;
+  }, [urls, statusFilter, clickSort]);
 
   const stats = useMemo(() => {
     const totalLinks = urls.length;
@@ -163,7 +214,7 @@ export default function Account() {
 
         <div className="dash-actions">
           <button
-            className="btn btn-secondary"
+            className="btn btn-home"
             type="button"
             onClick={() => navigate("/")}
           >
@@ -171,7 +222,7 @@ export default function Account() {
           </button>
 
           <button
-            className="btn btn-secondary"
+            className="btn btn-logout"
             type="button"
             onClick={handleLogout}
           >
@@ -204,25 +255,85 @@ export default function Account() {
 
       <div className="links-panel">
         <div className="links-header">
-          <div className="links-title">Your Links</div>
-          <div className="links-count">{sortedUrls.length} total</div>
+          <div>
+            <div className="links-title">Your Links</div>
+            <div className="links-count">{visibleUrls.length} shown</div>
+          </div>
+
+          <div className="links-controls">
+            <div className="segmented">
+              <button
+                className={`seg-btn ${statusFilter === "all" ? "active" : ""}`}
+                onClick={() => setStatusFilter("all")}
+                type="button"
+              >
+                All
+              </button>
+
+              <button
+                className={`seg-btn ${
+                  statusFilter === "active" ? "active" : ""
+                }`}
+                onClick={() => setStatusFilter("active")}
+                type="button"
+              >
+                Active
+              </button>
+
+              <button
+                className={`seg-btn ${
+                  statusFilter === "expired" ? "active" : ""
+                }`}
+                onClick={() => setStatusFilter("expired")}
+                type="button"
+              >
+                Expired
+              </button>
+            </div>
+
+            <div className="segmented">
+              <button
+                className={`seg-btn ${clickSort === "none" ? "active" : ""}`}
+                onClick={() => setClickSort("none")}
+                type="button"
+              >
+                Newest
+              </button>
+
+              <button
+                className={`seg-btn ${clickSort === "asc" ? "active" : ""}`}
+                onClick={() => setClickSort("asc")}
+                type="button"
+              >
+                Clicks ↑
+              </button>
+
+              <button
+                className={`seg-btn ${clickSort === "desc" ? "active" : ""}`}
+                onClick={() => setClickSort("desc")}
+                type="button"
+              >
+                Clicks ↓
+              </button>
+            </div>
+          </div>
         </div>
 
         {loading && <p className="hint">Loading...</p>}
         {apiError && <p className="error">{apiError}</p>}
 
-        {!loading && !apiError && sortedUrls.length === 0 && (
-          <p className="hint">No URLs yet. Create your first one!</p>
+        {!loading && !apiError && visibleUrls.length === 0 && (
+          <p className="hint">No URLs match this filter.</p>
         )}
 
-        {!loading && !apiError && sortedUrls.length > 0 && (
+        {!loading && !apiError && visibleUrls.length > 0 && (
           <div className="links-list">
-            {sortedUrls.map((u) => {
+            {visibleUrls.map((u) => {
               const expiredByTime = isTimeExpired(u.expiration);
               const expiredByInactive = u.active === false;
 
-              const status =
-                expiredByTime || expiredByInactive ? "Expired" : "Active";
+              const isExpired = expiredByTime || expiredByInactive;
+              const status = isExpired ? "Expired" : "Active";
 
               const shortLink = `${BACKEND_URL}r/${u.shortUrl}`;
               const displayShort = `r/${u.shortUrl}`;
@@ -237,15 +348,24 @@ export default function Account() {
                 <div className="link-row" key={u.id}>
                   <div className="link-row-left">
                     <div className="short-row">
-                      <a
-                        className="short-link"
-                        href={shortLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        title={shortLink}
-                      >
-                        {displayShort}
-                      </a>
+                      {isExpired ? (
+                        <span
+                          className="short-link short-link-disabled"
+                          title="This link is expired"
+                        >
+                          {displayShort}
+                        </span>
+                      ) : (
+                        <a
+                          className="short-link"
+                          href={shortLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={shortLink}
+                        >
+                          {displayShort}
+                        </a>
+                      )}
 
                       <button
                         className="copy-btn"

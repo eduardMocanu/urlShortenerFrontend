@@ -3,6 +3,7 @@ import "./style.css";
 import axios from "axios";
 import isUrl from "is-url";
 import { useNavigate } from "react-router-dom";
+import { getValidToken } from "./utils/auth";
 
 function sanitizeUrl(value) {
   if (!value) return "";
@@ -19,13 +20,15 @@ export default function App() {
   const [input, setInput] = useState("");
   const [result, setResult] = useState(null);
   const [apiError, setApiError] = useState("");
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
+
+  // IMPORTANT: token must be valid
+  const [token, setToken] = useState(() => getValidToken());
 
   const isLoggedIn = !!token;
 
   useEffect(() => {
     function syncToken() {
-      setToken(localStorage.getItem("token"));
+      setToken(getValidToken());
     }
 
     window.addEventListener("storage", syncToken);
@@ -55,13 +58,17 @@ export default function App() {
 
     if (!sanitized || !valid) return;
 
+    // refresh token validity right before request
+    const freshToken = getValidToken();
+    setToken(freshToken);
+
     try {
       const res = await axios.post(
         "http://localhost:8080/shorten",
         { urlAddress: sanitized },
         {
-          headers: isLoggedIn
-            ? { Authorization: `Bearer ${token}` }
+          headers: freshToken
+            ? { Authorization: `Bearer ${freshToken}` }
             : undefined,
         }
       );
@@ -73,7 +80,10 @@ export default function App() {
       });
     } catch (err) {
       if (err?.response?.status === 401) {
-        setApiError("You need to log in to shorten URLs.");
+        // if token expired mid-session
+        localStorage.removeItem("token");
+        setToken(null);
+        setApiError("Your session expired. Please log in again.");
       } else {
         setApiError("Something went wrong. Please try again.");
       }
@@ -87,7 +97,7 @@ export default function App() {
         {!isLoggedIn ? (
           <>
             <button
-              className="btn btn-secondary"
+              className="btn btn-primary"
               type="button"
               onClick={() => navigate("/login")}
             >
@@ -105,7 +115,7 @@ export default function App() {
         ) : (
           <>
             <button
-              className="btn btn-secondary"
+              className="btn btn-primary"
               type="button"
               onClick={() => navigate("/account")}
             >
@@ -113,7 +123,7 @@ export default function App() {
             </button>
 
             <button
-              className="btn btn-secondary"
+              className="btn btn-danger"
               type="button"
               onClick={handleLogout}
             >
@@ -141,7 +151,7 @@ export default function App() {
             />
 
             <button
-              className="btn"
+              className="btn btn-primary"
               type="submit"
               disabled={!sanitized || !valid}
             >
