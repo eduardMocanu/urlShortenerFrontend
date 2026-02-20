@@ -370,9 +370,18 @@ export default function Account() {
                       <button
                         className="copy-btn"
                         type="button"
-                        onClick={() => copyToClipboard(shortLink, u.id)}
+                        disabled={isExpired}
+                        onClick={() => {
+                          if (!isExpired) {
+                            copyToClipboard(shortLink, u.id);
+                          }
+                        }}
                       >
-                        {copiedId === u.id ? "Copied!" : "Copy"}
+                        {isExpired
+                          ? "Unavailable"
+                          : copiedId === u.id
+                          ? "Copied!"
+                          : "Copy"}
                       </button>
 
                       <button
@@ -384,6 +393,14 @@ export default function Account() {
                         {invalidatingId === u.id
                           ? "Invalidating..."
                           : "Invalidate"}
+                      </button>
+
+                      <button
+                        className="analytics-btn"
+                        type="button"
+                        onClick={() => navigate(`/analytics/${u.id}`)}
+                      >
+                        Analytics
                       </button>
 
                       <span

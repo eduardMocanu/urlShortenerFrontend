@@ -408,3 +408,26 @@ body {
     font-size: 12px;
   }
 }
+
+/* ANALYTICS BUTTON */
+.analytics-btn {
+  border: 1px solid rgba(76, 195, 255, 0.45);
+  background: rgba(76, 195, 255, 0.12);
+  color: white;
+  border-radius: 12px;
+  padding: 7px 10px;
+  font-weight: 900;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: 0.15s ease;
+}
+
+.analytics-btn:hover {
+  background: rgba(76, 195, 255, 0.22);
+}
+
+.copy-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
