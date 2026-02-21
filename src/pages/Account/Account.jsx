@@ -36,12 +36,12 @@ export default function Account() {
   const [statusFilter, setStatusFilter] = useState("all"); // all | active | expired
   const [clickSort, setClickSort] = useState("none"); // none | asc | desc
 
-  // IMPORTANT: valid token only
-  const token = getValidToken();
+  // Extend UI state
+  const [extendOpenId, setExtendOpenId] = useState(null);
+  const [extendDays, setExtendDays] = useState(7);
+  const [extendingId, setExtendingId] = useState(null);
 
-  function authHeaders() {
-    return { Authorization: `Bearer ${token}` };
-  }
+  const token = getValidToken();
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -64,8 +64,6 @@ export default function Account() {
     setApiError("");
 
     const freshToken = getValidToken();
-
-    // token expired between renders
     if (!freshToken) {
       navigate("/login", { replace: true });
       return;
@@ -83,7 +81,6 @@ export default function Account() {
         navigate("/login", { replace: true });
         return;
       }
-
       console.error(err);
       setApiError("Could not load your URLs. Try again.");
     } finally {
@@ -96,7 +93,6 @@ export default function Account() {
     setApiError("");
 
     const freshToken = getValidToken();
-
     if (!freshToken) {
       navigate("/login", { replace: true });
       return;
@@ -112,11 +108,7 @@ export default function Account() {
       setUrls((prev) =>
         prev.map((u) =>
           u.id === id
-            ? {
-                ...u,
-                active: false,
-                expiration: new Date().toISOString(),
-              }
+            ? { ...u, active: false, expiration: new Date().toISOString() }
             : u
         )
       );
@@ -127,18 +119,84 @@ export default function Account() {
         return;
       }
 
-      console.error("Invalidate failed:", err);
-
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         "Could not invalidate the URL.";
 
-      setApiError(
-        typeof msg === "string" ? msg : "Could not invalidate the URL."
-      );
+      setApiError(typeof msg === "string" ? msg : "Could not invalidate the URL.");
     } finally {
       setInvalidatingId(null);
+    }
+  }
+
+  function openExtendMenu(urlId) {
+    setApiError("");
+    setExtendDays(7);
+    setExtendOpenId(urlId);
+  }
+
+  function closeExtendMenu() {
+    setExtendOpenId(null);
+    setExtendDays(7);
+  }
+
+  async function extendUrl(id, days) {
+    setExtendingId(id);
+    setApiError("");
+
+    const freshToken = getValidToken();
+    if (!freshToken) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    try {
+      const res = await axios.put(
+        `${BACKEND_URL}url/${id}/extend`,
+        { days },
+        {
+          headers: {
+            Authorization: `Bearer ${freshToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const dto = res.data; // { id, extensions, expiration, maximumExtensions }
+
+      setUrls((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                expiration: dto.expiration ?? u.expiration,
+                extensions: dto.extensions ?? u.extensions ?? 0,
+                maximumExtensions:
+                  dto.maximumExtensions ?? u.maximumExtensions ?? 5,
+              }
+            : u
+        )
+      );
+
+      closeExtendMenu();
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      console.error("Extend failed:", err);
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Could not extend the URL.";
+
+      setApiError(typeof msg === "string" ? msg : "Could not extend the URL.");
+    } finally {
+      setExtendingId(null);
     }
   }
 
@@ -147,7 +205,6 @@ export default function Account() {
       navigate("/login", { replace: true });
       return;
     }
-
     loadUrls();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, BACKEND_URL, navigate]);
@@ -155,7 +212,6 @@ export default function Account() {
   const visibleUrls = useMemo(() => {
     const filtered = urls.filter((u) => {
       const expired = u.active === false || isTimeExpired(u.expiration);
-
       if (statusFilter === "active") return !expired;
       if (statusFilter === "expired") return expired;
       return true;
@@ -164,11 +220,7 @@ export default function Account() {
     const copy = [...filtered];
 
     // default sort: newest
-    copy.sort((a, b) => {
-      const da = new Date(a.createdAt).getTime();
-      const db = new Date(b.createdAt).getTime();
-      return db - da;
-    });
+    copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // click sort overrides
     if (clickSort !== "none") {
@@ -176,12 +228,10 @@ export default function Account() {
         const ca = a.clicksCount ?? 0;
         const cb = b.clicksCount ?? 0;
 
-        // tie-breaker: newest
         const da = new Date(a.createdAt).getTime();
         const db = new Date(b.createdAt).getTime();
 
         if (ca === cb) return db - da;
-
         return clickSort === "asc" ? ca - cb : cb - ca;
       });
     }
@@ -204,6 +254,88 @@ export default function Account() {
 
   return (
     <div className="dashboard">
+      {/* Extend modal */}
+      {extendOpenId != null && (
+        <div className="modal-overlay" onClick={closeExtendMenu}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            {(() => {
+              const selected = urls.find((u) => u.id === extendOpenId);
+              const used = selected?.extensions ?? 0;
+              const max = selected?.maximumExtensions ?? 5;
+              const left = Math.max(0, max - used);
+              const exhausted = left <= 0;
+
+              return (
+                <>
+                  <div className="modal-title">Extend expiration</div>
+                  <div className="modal-subtitle">
+                    Choose up to <b>7</b> days.
+                  </div>
+
+                  <div className="modal-row">
+                    <div className="modal-label">Extensions</div>
+                    <div className="ext-badge">
+                      {used}/{max} used
+                    </div>
+                  </div>
+
+                  <div className="slider-wrap">
+                    <div className="slider-top">
+                      <span className="slider-label">Days</span>
+                      <span className="slider-value">{extendDays}</span>
+                    </div>
+
+                    <input
+                      className="slider"
+                      type="range"
+                      min="1"
+                      max="7"
+                      step="1"
+                      value={extendDays}
+                      disabled={exhausted || extendingId === extendOpenId}
+                      onChange={(e) => setExtendDays(Number(e.target.value))}
+                    />
+
+                    <div className="slider-hints">
+                      <span>+1</span>
+                      <span>+7</span>
+                    </div>
+
+                    {exhausted && (
+                      <div className="modal-hint error">
+                        No extensions left for this URL.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="modal-actions">
+                    <button
+                      className="btn btn-secondary"
+                      type="button"
+                      onClick={closeExtendMenu}
+                      disabled={extendingId === extendOpenId}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      className="btn btn-home"
+                      type="button"
+                      disabled={exhausted || extendingId === extendOpenId}
+                      onClick={() => extendUrl(extendOpenId, extendDays)}
+                    >
+                      {extendingId === extendOpenId
+                        ? "Extending..."
+                        : `Extend +${extendDays}d`}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       <div className="dash-topbar">
         <div>
           <div className="dash-title">Your Dashboard</div>
@@ -213,19 +345,11 @@ export default function Account() {
         </div>
 
         <div className="dash-actions">
-          <button
-            className="btn btn-home"
-            type="button"
-            onClick={() => navigate("/")}
-          >
+          <button className="btn btn-home" type="button" onClick={() => navigate("/")}>
             Home
           </button>
 
-          <button
-            className="btn btn-logout"
-            type="button"
-            onClick={handleLogout}
-          >
+          <button className="btn btn-logout" type="button" onClick={handleLogout}>
             Logout
           </button>
         </div>
@@ -271,9 +395,7 @@ export default function Account() {
               </button>
 
               <button
-                className={`seg-btn ${
-                  statusFilter === "active" ? "active" : ""
-                }`}
+                className={`seg-btn ${statusFilter === "active" ? "active" : ""}`}
                 onClick={() => setStatusFilter("active")}
                 type="button"
               >
@@ -281,9 +403,7 @@ export default function Account() {
               </button>
 
               <button
-                className={`seg-btn ${
-                  statusFilter === "expired" ? "active" : ""
-                }`}
+                className={`seg-btn ${statusFilter === "expired" ? "active" : ""}`}
                 onClick={() => setStatusFilter("expired")}
                 type="button"
               >
@@ -341,18 +461,19 @@ export default function Account() {
               const expiresLabel = status === "Active" ? "Expires" : "Expired";
               const expiresValue = formatDate(u.expiration);
 
-              const disableInvalidate =
-                u.active === false || invalidatingId === u.id;
+              const disableInvalidate = u.active === false || invalidatingId === u.id;
+
+              const used = u.extensions ?? 0;
+              const max = u.maximumExtensions ?? 5;
+              const left = Math.max(0, max - used);
+              const disableExtend = isExpired || left <= 0 || extendingId === u.id;
 
               return (
                 <div className="link-row" key={u.id}>
                   <div className="link-row-left">
                     <div className="short-row">
                       {isExpired ? (
-                        <span
-                          className="short-link short-link-disabled"
-                          title="This link is expired"
-                        >
+                        <span className="short-link short-link-disabled" title="This link is expired">
                           {displayShort}
                         </span>
                       ) : (
@@ -372,16 +493,10 @@ export default function Account() {
                         type="button"
                         disabled={isExpired}
                         onClick={() => {
-                          if (!isExpired) {
-                            copyToClipboard(shortLink, u.id);
-                          }
+                          if (!isExpired) copyToClipboard(shortLink, u.id);
                         }}
                       >
-                        {isExpired
-                          ? "Unavailable"
-                          : copiedId === u.id
-                          ? "Copied!"
-                          : "Copy"}
+                        {isExpired ? "Unavailable" : copiedId === u.id ? "Copied!" : "Copy"}
                       </button>
 
                       <button
@@ -390,9 +505,23 @@ export default function Account() {
                         disabled={disableInvalidate}
                         onClick={() => invalidateUrl(u.id)}
                       >
-                        {invalidatingId === u.id
-                          ? "Invalidating..."
-                          : "Invalidate"}
+                        {invalidatingId === u.id ? "Invalidating..." : "Invalidate"}
+                      </button>
+
+                      <button
+                        className="extend-btn"
+                        type="button"
+                        disabled={disableExtend}
+                        onClick={() => openExtendMenu(u.id)}
+                        title={
+                          isExpired
+                            ? "Cannot extend expired URL"
+                            : left <= 0
+                            ? "No extensions left"
+                            : "Extend expiration"
+                        }
+                      >
+                        Extend <span className="extend-chip">{used}/{max}</span>
                       </button>
 
                       <button
@@ -403,11 +532,7 @@ export default function Account() {
                         Analytics
                       </button>
 
-                      <span
-                        className={`pill ${
-                          status === "Active" ? "pill-ok" : "pill-bad"
-                        }`}
-                      >
+                      <span className={`pill ${status === "Active" ? "pill-ok" : "pill-bad"}`}>
                         {status}
                       </span>
                     </div>
@@ -441,9 +566,7 @@ export default function Account() {
 
                     <div className="meta">
                       <div className="meta-label">Last Access</div>
-                      <div className="meta-value">
-                        {formatDate(u.lastAccessed)}
-                      </div>
+                      <div className="meta-value">{formatDate(u.lastAccessed)}</div>
                     </div>
                   </div>
                 </div>
