@@ -45,6 +45,16 @@ export default function DashboardPage() {
     navigate("/login", { replace: true });
   }
 
+  function handleLinkClick(id) {
+    setUrls((prev) =>
+      prev.map((u) =>
+        u.id === id
+          ? { ...u, clicksCount: (u.clicksCount ?? 0) + 1, lastAccessed: new Date().toISOString() }
+          : u
+      )
+    );
+  }
+
   async function copyLink(text, id) {
     try {
       await navigator.clipboard.writeText(text);
@@ -323,7 +333,15 @@ export default function DashboardPage() {
                       {exp ? (
                         <span className="mono-link mono-link--disabled">{display}</span>
                       ) : (
-                        <a className="mono-link" href={shortLink} target="_blank" rel="noreferrer">{display}</a>
+                        <a
+                          className="mono-link"
+                          href={shortLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => handleLinkClick(u.id)}
+                        >
+                          {display}
+                        </a>
                       )}
                       <span className={`pill ${exp ? "pill-bad" : "pill-ok"}`}>{status}</span>
                     </div>
