@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import "./style.css";
+import { API_BASE } from "../../utils/api";
+import "../Login/LoginPage.css"; /* reuse same auth styles */
 
-export default function Register() {
+export default function RegisterPage() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -21,30 +21,16 @@ export default function Register() {
     e.preventDefault();
     setError("");
 
-    if (!emailOk) {
-      setError("Please enter a valid email.");
-      return;
-    }
-
-    if (!passwordOk) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-
-    if (!matchOk) {
-      setError("Passwords do not match.");
-      return;
-    }
+    if (!emailOk) return setError("Please enter a valid email.");
+    if (!passwordOk) return setError("Password must be at least 6 characters.");
+    if (!matchOk) return setError("Passwords do not match.");
 
     try {
       setLoading(true);
-
-      await axios.post("http://localhost:8080/register", {
+      await axios.post(`${API_BASE}/register`, {
         username: email.trim().toLowerCase(),
         password,
       });
-
-      // After successful register, go to login
       navigate("/login");
     } catch {
       setError("Registration failed. Email may already exist.");
@@ -54,21 +40,22 @@ export default function Register() {
   }
 
   function handleGoogleLogin() {
-    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+    window.location.href = `${API_BASE}/oauth2/authorization/google`;
   }
 
   return (
-    <div className="page">
-      <div className="card card-auth">
-        <div className="header auth-header">
+    <div className="auth-page">
+      <div className="card auth-card">
+        <div className="auth-header">
           <h1>Create account</h1>
           <p>Register to start shortening links.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="field">
-            <label className="label">Email</label>
+            <label className="label" htmlFor="reg-email">Email</label>
             <input
+              id="reg-email"
               className={`input ${error && !emailOk ? "input-error" : ""}`}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -79,8 +66,9 @@ export default function Register() {
           </div>
 
           <div className="field">
-            <label className="label">Password</label>
+            <label className="label" htmlFor="reg-pw">Password</label>
             <input
+              id="reg-pw"
               className={`input ${error && !passwordOk ? "input-error" : ""}`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -91,8 +79,9 @@ export default function Register() {
           </div>
 
           <div className="field">
-            <label className="label">Confirm password</label>
+            <label className="label" htmlFor="reg-pw2">Confirm password</label>
             <input
+              id="reg-pw2"
               className={`input ${error && !matchOk ? "input-error" : ""}`}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -104,16 +93,14 @@ export default function Register() {
 
           {error && <p className="error">{error}</p>}
 
-          <button className="btn btn-full" type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Register"}
+          <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
+            {loading ? "Creating…" : "Register"}
           </button>
         </form>
 
-        <div className="divider">
-          <span>or</span>
-        </div>
+        <div className="divider"><span>or</span></div>
 
-        <button className="btn btn-ghost btn-full" onClick={handleGoogleLogin}>
+        <button className="btn btn-ghost btn-full" type="button" onClick={handleGoogleLogin}>
           Continue with Google
         </button>
 
