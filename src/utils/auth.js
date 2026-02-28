@@ -1,13 +1,14 @@
-import { jwtDecode } from "jwt-decode";
+import axios from "axios";
+import { API_BASE } from "./api";
 
-export function isTokenValid(token) {
+/**
+ * Check if the current session cookie is still valid
+ * by hitting the backend's /auth/me endpoint.
+ */
+export async function checkAuth() {
   try {
-    const decoded = jwtDecode(token);
-
-    // exp is in seconds
-    if (!decoded?.exp) return false;
-
-    return decoded.exp * 1000 > Date.now();
+    const res = await axios.get(`${API_BASE}/auth/me`);
+    return res.status === 200;
   } catch {
     return false;
   }

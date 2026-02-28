@@ -4,7 +4,14 @@ import { useAuth } from "../context/AuthContext";
 export default function ProtectedRoute({ children }) {
   const { isLoggedIn, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <div className="spinner" />
+      </div>
+    );
+  }
+
   if (!isLoggedIn) return <Navigate to="/login" replace />;
 
   return children;
