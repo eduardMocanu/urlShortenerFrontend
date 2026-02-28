@@ -1,26 +1,26 @@
-import { jwtDecode } from "jwt-decode";
+import axios from "axios";
+import { API_BASE } from "./api";
 
-export function isTokenValid(token) {
+/**
+ * Check if the current session cookie is still valid
+ * by hitting a protected endpoint.
+ */
+export async function checkAuth() {
   try {
-    const decoded = jwtDecode(token);
-
-    // exp is in seconds
-    if (!decoded?.exp) return false;
-
-    return decoded.exp * 1000 > Date.now();
+    const res = await axios.get(`${API_BASE}/auth/me`);
+    return res.status === 200;
   } catch {
     return false;
   }
 }
 
-export function getValidToken() {
-  const token = localStorage.getItem("token");
-  if (!token) return null;
-
-  if (!isTokenValid(token)) {
-    localStorage.removeItem("token");
-    return null;
+/**
+ * Ask the backend to clear the session cookie.
+ */
+export async function logout() {
+  try {
+    await axios.post(`${API_BASE}/logout`);
+  } catch {
+    // silent — cookie may already be gone
   }
-
-  return token;
 }
