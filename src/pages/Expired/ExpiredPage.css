@@ -1,0 +1,46 @@
+/* ===== STATUS PAGES (Expired + NotFound) ===== */
+.status-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.status-card {
+  max-width: 520px;
+  text-align: center;
+  animation: card-in 0.45s ease-out both;
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.status-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.status-subtitle {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.status-actions {
+  margin-top: 22px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.status-hint {
+  margin-top: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  opacity: 0.7;
+}
