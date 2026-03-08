@@ -19,7 +19,7 @@ export async function checkAuth() {
  */
 export async function logout() {
   try {
-    await axios.post(`${API_BASE}/logout`);
+    await axios.post(`${API_BASE}/logout`, {}, { withCredentials: true });
   } catch {
     // silent — cookie may already be gone
   }
