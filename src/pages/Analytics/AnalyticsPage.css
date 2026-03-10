@@ -6,3 +6,12 @@
   border: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.25);
 }
+
+.analytics-stats {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 540px) {
+  .chart-wrap { padding: 10px 6px; }
+  .analytics-stats { grid-template-columns: 1fr; }
+}

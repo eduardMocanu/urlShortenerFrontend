@@ -354,7 +354,28 @@
 }
 
 @media (max-width: 650px) {
+  .dash { padding: 16px; }
+  .dash-title { font-size: 24px; }
+  .dash-subtitle { font-size: 13px; }
+  .dash-header { flex-direction: column; gap: 12px; }
+  .dash-actions { width: 100%; }
+  .dash-actions .btn { flex: 1; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-value { font-size: 22px; }
+  .stat-card { padding: 14px; }
+  .links-panel { padding: 14px; }
+  .link-row { padding: 12px; gap: 14px; }
   .link-meta-grid { grid-template-columns: 1fr; }
   .seg-btn { padding: 8px 10px; font-size: 12px; }
-  .dash-header { flex-direction: column; }
+  .links-controls { flex-direction: column; width: 100%; }
+  .seg-group { width: 100%; }
+  .seg-btn { flex: 1; text-align: center; }
+  .link-actions { gap: 6px; }
+  .action-btn { font-size: 12px; padding: 8px 10px; min-height: 40px; }
+  .modal-card { max-width: 100%; }
+  .modal-overlay { padding: 12px; }
+}
+
+@media (max-width: 400px) {
+  .stats-grid { grid-template-columns: 1fr; }
 }

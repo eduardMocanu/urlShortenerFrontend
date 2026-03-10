@@ -44,3 +44,9 @@
   font-size: 13px;
   opacity: 0.7;
 }
+
+@media (max-width: 540px) {
+  .status-page { padding: 16px; }
+  .status-title { font-size: 24px; }
+  .status-subtitle { font-size: 14px; }
+}

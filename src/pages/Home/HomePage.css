@@ -97,6 +97,11 @@
 
 /* Responsive */
 @media (max-width: 540px) {
+  .home-page { padding: 16px; padding-top: 64px; }
+  .home-nav { top: 10px; right: 10px; gap: 6px; }
+  .home-nav .btn { padding: 8px 12px; font-size: 12px; }
   .home-row { flex-direction: column; }
-  .home-title { font-size: 28px; }
+  .home-title { font-size: 24px; }
+  .home-subtitle { font-size: 14px; }
+  .home-result-url { font-size: 15px; }
 }

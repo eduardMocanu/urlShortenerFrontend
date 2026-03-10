@@ -76,7 +76,7 @@ export default function AnalyticsPage() {
         </div>
       </header>
 
-      <div className="stats-grid" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+      <div className="stats-grid analytics-stats">
         <div className="card stat-card">
           <span className="stat-label">Total clicks (12 days)</span>
           <span className="stat-value">{totalClicks}</span>
@@ -97,7 +97,7 @@ export default function AnalyticsPage() {
 
         {!loading && chartData.length > 0 && (
           <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={260}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                 <XAxis dataKey="date" stroke="rgba(255,255,255,0.5)" fontSize={12} />
